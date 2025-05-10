@@ -1,32 +1,73 @@
-#include <WiFi.h>
+/*
+ *  Lectura de humedad de suelo (FC-28)  → envío por HTTP POST
+ *  Placa: ESP32, sensor AO en GPIO34, alimentado a 3 V 3
+ */
 
-//const int sensorPin = 34;
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+// ------------- CREDENCIALES DE TU RED -------------
+const char* SSID     = "MOVISTAR_PLUS_1ADO";
+const char* PASSWORD = "cEoYtcxfamN2Rgv3Bzaj";
+// --------------------------------------------------
+
+// ------------- ENDPOINT DONDE GUARDAR EL DATO -----
+const char* API_URL  = "https://ejemplo.tu-servidor.com/api/humedad";
+// --------------------------------------------------
+
+// Pin analógico y calibración
+const int SENSOR_PIN  = 34;
+const int ADC_HUMEDO  = 1700;  // <–– Ajusta con tu lectura real en tierra muy húmeda
+const int ADC_SECO    = 3200;  // <–– Ajusta con tu lectura real en tierra seca
+const unsigned long INTERVALO_MS = 2000;
+
+unsigned long t0 = 0;
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
 
   WiFi.mode(WIFI_STA);
-  WiFi.begin();
+  WiFi.begin(SSID, PASSWORD);
 
-  Serial.println("==== Información del dispositivo ====");
+  Serial.printf("Conectando a %s ...\n", SSID);
+  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("⚠️  No se pudo conectar. Continuamos sin Wi-Fi.");
+  }
+
+  Serial.println("\n==== Información del dispositivo ====");
   Serial.print("MAC Address: ");
   Serial.println(WiFi.macAddress());
-  Serial.println("Iniciando lectura de humedad...");
+  Serial.println("\n===== Lectura de humedad (FC-28) =====");
+  Serial.println("ADC  | %H");
+  Serial.println("-----------------------");
 }
 
 void loop() {
-  /*
-  int sensorValue = analogRead(sensorPin);
-  
-  int humedad = map(sensorValue, 0, 4095, 100, 0);
-  
-  Serial.print("Valor bruto: ");
-  Serial.print(sensorValue);
-  Serial.print(" | Humedad: ");
-  Serial.print(humedad);
-  Serial.println("%");
+  if (millis() - t0 >= INTERVALO_MS) {
+    t0 = millis();
 
-  delay(2000);
-  */
+    int adc      = analogRead(SENSOR_PIN);
+    int humedad  = map(adc, ADC_HUMEDO, ADC_SECO, 100, 0);
+    humedad      = constrain(humedad, 0, 100);
+
+    Serial.printf("%4d | %3d %%\n", adc, humedad);
+
+    if (WiFi.status() == WL_CONNECTED) {
+      //sendToServer(adc, humedad);
+      Serial.print("Mandando datos a la web");
+    }
+  }
+}
+
+void sendToServer(int adc, int humedad) {
+  HTTPClient http;
+  http.begin(API_URL);        // Si tu servidor usa un certificado propio: http.setInsecure();
+  http.addHeader("Content-Type", "application/json");
+
+  String payload = String("{\"adc\":") + adc + ",\"humedad\":" + humedad + "}";
+  int code = http.POST(payload);
+
+  Serial.printf("POST → %d\n", code);
+  http.end();
 }
