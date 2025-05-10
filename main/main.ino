@@ -12,7 +12,7 @@ void setup() {
   Serial.println("==== Información del dispositivo ====");
   Serial.print("MAC Address: ");
   Serial.println(WiFi.macAddress());
-  //Serial.println("Iniciando lectura de humedad...");
+  Serial.println("Iniciando lectura de humedad...");
 }
 
 void loop() {
