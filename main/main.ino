@@ -1,19 +1,16 @@
 /*
- * Lectura de humedad de suelo (FC-28) + control de bomba
- * SIN Wi-Fi
- * Placa: ESP32, sensor AO en GPIO34, relé 2 en GPIO27
+ * Control cíclico de bomba de agua
+ * Placa: ESP32, relé conectado al GPIO27
+ * Encendido: 3 segundos, Apagado: 7 segundos (ciclo total: 10 segundos)
  */
 
-const int SENSOR_PIN = 34;    // FC-28 AO
-const int RELAY_PIN  = 27;    // IN2 del segundo relé
+const int RELAY_PIN = 27;  // IN2 del segundo relé
 
-// Calibración humedad (ajústalo con tus lecturas)
-const int ADC_HUMEDO = 1700;
-const int ADC_SECO   = 3200;
-const int UMBRAL_HUMEDAD = 40;  // (%) Por debajo de este valor se activa la bomba
+// Duraciones (en milisegundos)
+const unsigned long TIEMPO_ENCENDIDO = 3000;
+const unsigned long TIEMPO_APAGADO = 7000;
+const unsigned long CICLO_TOTAL = TIEMPO_ENCENDIDO + TIEMPO_APAGADO;
 
-// Intervalo entre lecturas
-const unsigned long INTERVALO_MS = 2000;
 unsigned long t0 = 0;
 
 void setup() {
@@ -21,31 +18,22 @@ void setup() {
   delay(1000);
 
   pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, LOW);  // Bomba apagada al inicio
+  digitalWrite(RELAY_PIN, LOW);  // Apagar bomba al inicio
 
-  Serial.println("==== Sistema de riego automático ====");
-  Serial.println("ADC  | %Humedad");
-  Serial.println("-----------------------");
+  Serial.println("==== Ciclo automático de bomba ====");
 }
 
 void loop() {
-  if (millis() - t0 >= INTERVALO_MS) {
-    t0 = millis();
+  unsigned long tiempoActual = millis();
+  unsigned long tiempoEnCiclo = (tiempoActual - t0) % CICLO_TOTAL;
 
-    // Leer humedad
-    int adc = analogRead(SENSOR_PIN);
-    int humedad = map(adc, ADC_HUMEDO, ADC_SECO, 100, 0);
-    humedad = constrain(humedad, 0, 100);
-
-    Serial.printf("%4d | %3d %%\n", adc, humedad);
-
-    // Control de bomba
-    if (humedad < UMBRAL_HUMEDAD) {
-      Serial.println("🌵 Suelo seco → Activando bomba");
-      digitalWrite(RELAY_PIN, HIGH);
-    } else {
-      Serial.println("💧 Suelo húmedo → Apagando bomba");
-      digitalWrite(RELAY_PIN, LOW);
-    }
+  if (tiempoEnCiclo < TIEMPO_ENCENDIDO) {
+    Serial.println("💦 Bomba ENCENDIDA");
+    digitalWrite(RELAY_PIN, HIGH);
+  } else {
+    Serial.println("🔇 Bomba APAGADA");
+    digitalWrite(RELAY_PIN, LOW);
   }
+
+  delay(500); // Evita mensajes excesivos por segundo
 }
