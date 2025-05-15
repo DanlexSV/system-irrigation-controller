@@ -1,8 +1,3 @@
-/*
- *  Lectura de humedad de suelo (FC-28)  → envío por HTTP POST
- *  Placa: ESP32, sensor AO en GPIO34, alimentado a 3 V 3
- */
-
 #include <WiFi.h>
 #include <HTTPClient.h>
 
