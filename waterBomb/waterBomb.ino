@@ -1,29 +1,17 @@
-// GPIO que controla el relé
-constexpr uint8_t RELAY_PIN = 26;   // D26
-
-// Ajusta a true si tu módulo de relé es activo-alto.
-// La mayoría de los relés baratos son activo-bajo (0 = ON, 1 = OFF).
-constexpr bool RELAY_ACTIVE_HIGH = false;
+#define RELAY_PIN 26   // GPIO26
 
 void setup() {
   Serial.begin(115200);
   pinMode(RELAY_PIN, OUTPUT);
-
-  // Relé apagado al arrancar
-  digitalWrite(RELAY_PIN, RELAY_ACTIVE_HIGH ? LOW : HIGH);
-  Serial.println("Envía 'Y' para encender la bomba, 'N' para apagarla.");
+  digitalWrite(RELAY_PIN, HIGH);   // relé OFF (activo-bajo)
 }
 
 void loop() {
-  if (Serial.available()) {
-    char c = toupper(Serial.read());
+  Serial.println("Encendiendo bomba");
+  digitalWrite(RELAY_PIN, LOW);    // relé ON
+  delay(5000);
 
-    if (c == 'Y') {
-      digitalWrite(RELAY_PIN, RELAY_ACTIVE_HIGH ? HIGH : LOW);
-      Serial.println("Bomba ON");
-    } else if (c == 'N') {
-      digitalWrite(RELAY_PIN, RELAY_ACTIVE_HIGH ? LOW : HIGH);
-      Serial.println("Bomba OFF");
-    }
-  }
+  Serial.println("Apagando bomba");
+  digitalWrite(RELAY_PIN, HIGH);   // relé OFF
+  delay(5000);
 }
