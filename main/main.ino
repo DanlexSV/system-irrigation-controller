@@ -63,14 +63,14 @@ void conectarWiFi() {
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println();
-    Serial.println("✅ Conectado al WiFi");
+    Serial.println("Conectado al WiFi");
     Serial.print("IP local: ");
     Serial.println(WiFi.localIP());
     Serial.print("MAC: ");
     Serial.println(WiFi.macAddress());
   } else {
     Serial.println();
-    Serial.println("❌ No se pudo conectar al WiFi");
+    Serial.println("No se pudo conectar al WiFi");
   }
 }
 
@@ -105,10 +105,10 @@ void revisarRiego(int humedadRaw) {
 
 void enviarHumedad(float humedadPct) {
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("⚠️ WiFi desconectado. Reconectando...");
+    Serial.println("WiFi desconectado. Reconectando...");
     conectarWiFi();
     if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("🚫 No se pudo enviar la lectura (sin WiFi)");
+      Serial.println("No se pudo enviar la lectura (sin WiFi)");
       return;
     }
   }
@@ -120,15 +120,15 @@ void enviarHumedad(float humedadPct) {
   String mac  = WiFi.macAddress();
   String body = String("{\"mac_address\":\"") + mac + "\",\"humidity\":" + String(humedadPct, 1) + "}";
 
-  Serial.print("📤 POST ");
+  Serial.print("POST ");
   Serial.println(body);
 
   int code = http.POST(body);
   if (code > 0) {
-    Serial.printf("📥 HTTP %d\n", code);
+    Serial.printf("HTTP %d\n", code);
     Serial.println(http.getString());
   } else {
-    Serial.printf("❌ Error HTTP: %s\n", http.errorToString(code).c_str());
+    Serial.printf("Error HTTP: %s\n", http.errorToString(code).c_str());
   }
 
   http.end();
