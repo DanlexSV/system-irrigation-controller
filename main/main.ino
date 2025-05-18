@@ -1,68 +1,135 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
-// ------------- CREDENCIALES DE TU RED -------------
-const char* SSID     = "MOVISTAR_PLUS_1ADO";
-const char* PASSWORD = "cEoYtcxfamN2Rgv3Bzaj";
-// --------------------------------------------------
+const char* SSID       = "Galaxy S24 Ultra E943";
+const char* PASSWORD   = "hola12345";
+const char* API_URL    = "https://daniel.fernandosilva.es/api/devices/humidity";
 
-// ------------- ENDPOINT DONDE GUARDAR EL DATO -----
-const char* API_URL  = "https://ejemplo.tu-servidor.com/api/humedad";
-// --------------------------------------------------
+#define SENSOR_PIN 35
+#define RELAY_PIN  26
 
-// Pin analógico y calibración
-const int SENSOR_PIN  = 34;
-const int ADC_HUMEDO  = 1700;  // <–– Ajusta con tu lectura real en tierra muy húmeda
-const int ADC_SECO    = 3200;  // <–– Ajusta con tu lectura real en tierra seca
-const unsigned long INTERVALO_MS = 2000;
+const int   HUMEDAD_UMBRAL = 3000;
+const uint32_t DURACION_RIEGO = 9000;
 
-unsigned long t0 = 0;
+const float HUMIDITY_DELTA = 2.0;
+float ultimoHumedadPct = -1.0;
+
+bool bombaEncendida            = false;
+unsigned long tiempoInicioRiego = 0;
+
+void conectarWiFi();
+int  leerHumedadADC();
+float adcAporcentaje(int raw);
+void revisarRiego(int humedadRaw);
+void enviarHumedad(float humedadPct);
+
 
 void setup() {
   Serial.begin(115200);
-  delay(1000);
+  pinMode(SENSOR_PIN, INPUT);
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, HIGH);
+  Serial.println("Sistema de riego automático listo.");
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(SSID, PASSWORD);
-
-  Serial.printf("Conectando a %s ...\n", SSID);
-  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("⚠️  No se pudo conectar. Continuamos sin Wi-Fi.");
-  }
-
-  Serial.println("\n==== Información del dispositivo ====");
-  Serial.print("MAC Address: ");
-  Serial.println(WiFi.macAddress());
-  Serial.println("\n===== Lectura de humedad (FC-28) =====");
-  Serial.println("ADC  | %H");
-  Serial.println("-----------------------");
+  conectarWiFi();
 }
 
 void loop() {
-  if (millis() - t0 >= INTERVALO_MS) {
-    t0 = millis();
+  int   humedadRaw = leerHumedadADC();
+  float humedadPct = adcAporcentaje(humedadRaw);
 
-    int adc      = analogRead(SENSOR_PIN);
-    int humedad  = map(adc, ADC_HUMEDO, ADC_SECO, 100, 0);
-    humedad      = constrain(humedad, 0, 100);
+  revisarRiego(humedadRaw);
 
-    Serial.printf("%4d | %3d %%\n", adc, humedad);
+  if (ultimoHumedadPct < 0.0 || fabs(humedadPct - ultimoHumedadPct) >= HUMIDITY_DELTA) {
+    enviarHumedad(humedadPct);
+    ultimoHumedadPct = humedadPct;
+  }
 
-    if (WiFi.status() == WL_CONNECTED) {
-      //sendToServer(adc, humedad);
-      Serial.print("Mandando datos a la web");
-    }
+  delay(1000);
+}
+
+
+void conectarWiFi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(SSID, PASSWORD);
+
+  Serial.print("Conectando a WiFi");
+  uint8_t intentos = 0;
+  while (WiFi.status() != WL_CONNECTED && intentos < 20) {
+    delay(500);
+    Serial.print('.');
+    intentos++;
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println();
+    Serial.println("✅ Conectado al WiFi");
+    Serial.print("IP local: ");
+    Serial.println(WiFi.localIP());
+    Serial.print("MAC: ");
+    Serial.println(WiFi.macAddress());
+  } else {
+    Serial.println();
+    Serial.println("❌ No se pudo conectar al WiFi");
   }
 }
 
-void sendToServer(int adc, int humedad) {
+int leerHumedadADC() {
+  int lectura = analogRead(SENSOR_PIN);
+  Serial.print("Humedad suelo (ADC): ");
+  Serial.println(lectura);
+  return lectura;
+}
+
+float adcAporcentaje(int raw) {
+  float pct = 100.0 - ( (float)raw / 4095.0 ) * 100.0;
+  return constrain(pct, 0, 100);
+}
+
+void revisarRiego(int humedadRaw) {
+  unsigned long ahora = millis();
+
+  if (!bombaEncendida && humedadRaw > HUMEDAD_UMBRAL) {
+    Serial.println("Humedad baja. 🟢 Activando bomba...");
+    digitalWrite(RELAY_PIN, LOW);
+    tiempoInicioRiego = ahora;
+    bombaEncendida = true;
+  }
+
+  if (bombaEncendida && (ahora - tiempoInicioRiego) >= DURACION_RIEGO) {
+    Serial.println("⏰ Tiempo cumplido. 🔴 Apagando bomba.");
+    digitalWrite(RELAY_PIN, HIGH);
+    bombaEncendida = false;
+  }
+}
+
+void enviarHumedad(float humedadPct) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("⚠️ WiFi desconectado. Reconectando...");
+    conectarWiFi();
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("🚫 No se pudo enviar la lectura (sin WiFi)");
+      return;
+    }
+  }
+
   HTTPClient http;
-  http.begin(API_URL);        // Si tu servidor usa un certificado propio: http.setInsecure();
+  http.begin(API_URL);
   http.addHeader("Content-Type", "application/json");
 
-  String payload = String("{\"adc\":") + adc + ",\"humedad\":" + humedad + "}";
-  int code = http.POST(payload);
+  String mac  = WiFi.macAddress();
+  String body = String("{\"mac_address\":\"") + mac + "\",\"humidity\":" + String(humedadPct, 1) + "}";
 
-  Serial.printf("POST → %d\n", code);
+  Serial.print("📤 POST ");
+  Serial.println(body);
+
+  int code = http.POST(body);
+  if (code > 0) {
+    Serial.printf("📥 HTTP %d\n", code);
+    Serial.println(http.getString());
+  } else {
+    Serial.printf("❌ Error HTTP: %s\n", http.errorToString(code).c_str());
+  }
+
   http.end();
 }

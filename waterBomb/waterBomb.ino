@@ -1,17 +1,17 @@
-#define RELAY_PIN 26   // GPIO26
+#define RELAY_PIN 26
 
 void setup() {
   Serial.begin(115200);
   pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, HIGH);   // relé OFF (activo-bajo)
+  digitalWrite(RELAY_PIN, HIGH);
 }
 
 void loop() {
   Serial.println("Encendiendo bomba");
-  digitalWrite(RELAY_PIN, LOW);    // relé ON
+  digitalWrite(RELAY_PIN, LOW);
   delay(5000);
 
   Serial.println("Apagando bomba");
-  digitalWrite(RELAY_PIN, HIGH);   // relé OFF
+  digitalWrite(RELAY_PIN, HIGH);
   delay(5000);
 }
