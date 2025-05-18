@@ -97,7 +97,7 @@ void revisarRiego(int humedadRaw) {
   }
 
   if (bombaEncendida && (ahora - tiempoInicioRiego) >= DURACION_RIEGO) {
-    Serial.println("⏰ Tiempo cumplido. 🔴 Apagando bomba.");
+    Serial.println("Tiempo cumplido. 🔴 Apagando bomba.");
     digitalWrite(RELAY_PIN, HIGH);
     bombaEncendida = false;
   }
