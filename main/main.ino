@@ -229,11 +229,11 @@ void revisarRiego() {
 }
 
 void regarPlanta(int durationMs) {
-  Serial.println("🟢 Activando bomba según CHECK_WATERING...");
+  Serial.println("Activando bomba según CHECK_WATERING...");
   digitalWrite(RELAY_PIN, LOW);
   delay(durationMs);
   digitalWrite(RELAY_PIN, HIGH);
-  Serial.println("🔴 Bomba apagada tras regar.");
+  Serial.println("Bomba apagada tras regar.");
 
   int durationSecs = durationMs / 1000;
   if (durationSecs <= 0) durationSecs = 1;
@@ -288,7 +288,7 @@ void enviarAutoWatering(int durationSeconds) {
   String mac  = WiFi.macAddress();
   String body = String("{\"mac_address\":\"") + mac + "\",\"duration_seconds\":" + String(durationSeconds) + "}";
 
-  Serial.print("📤 AUTO_WATERING POST: ");
+  Serial.print("AUTO_WATERING POST: ");
   Serial.println(body);
 
   int code = http.POST(body);
