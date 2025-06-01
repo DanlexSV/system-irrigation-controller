@@ -54,6 +54,7 @@ void setup() {
   } else {
     Serial.println("Continuando con lógica de riego...");
   }
+}
 
 void loop() {
   int   humedadRaw = leerHumedadADC();
