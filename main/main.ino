@@ -37,6 +37,7 @@ int    leerHumedadADC();
 float  adcAporcentaje(int raw);
 void   revisarRiego();
 void   regarPlanta(int durationMs);
+void   controlarBomba();
 void   enviarHumedad(float humedadPct);
 void   enviarAutoWatering(int durationSeconds);
 
@@ -70,7 +71,9 @@ void loop() {
     }
   }
 
-  delay(1000);
+  controlarBomba();
+
+  delay(500);
 }
 
 
@@ -220,25 +223,39 @@ void revisarRiego() {
   }
 
   bool shouldWater = doc["should_water"];          
-  int  durationMs  = doc["duration_seconds"];      
+  int durationMsApi = doc["duration_seconds"].as<int>();
+  if (durationMsApi <= 0) durationMsApi = DURACION_RIEGO;  
 
-  Serial.printf("Respuesta CHECK_WATERING → should_water: %s, duration_seconds: %d\n", shouldWater ? "true" : "false", durationMs);
+  Serial.printf("CHECK_WATERING → should_water=%s, durationMs=%d\n", shouldWater?"true":"false", durationMsApi);
 
   if (shouldWater) {
-    regarPlanta(durationMs);
+    regarPlanta(durationMsApi);
   }
 }
 
 void regarPlanta(int durationMs) {
-  Serial.println("Activando bomba según CHECK_WATERING...");
-  digitalWrite(RELAY_PIN, LOW);
-  delay(durationMs);
-  digitalWrite(RELAY_PIN, HIGH);
-  Serial.println("Bomba apagada tras regar.");
+  if (bombaEncendida) {
+    Serial.println("⚠️  Bomba ya estaba encendida: ignorando nuevo comando");
+    return;
+  }
+  bombaDuracionMs   = (durationMs > 0) ? durationMs : DURACION_RIEGO;
+  tiempoInicioRiego = millis();
+  bombaEncendida    = true;
 
-  int durationSecs = durationMs / 1000;
-  if (durationSecs <= 0) durationSecs = 1;
-  enviarAutoWatering(durationSecs);
+  Serial.printf("🟢 Bomba ON (duración %lu ms)\n", bombaDuracionMs);
+  digitalWrite(RELAY_PIN, LOW);
+}
+
+void controlarBomba() {
+  if (bombaEncendida && (millis() - tiempoInicioRiego) >= bombaDuracionMs) {
+    digitalWrite(RELAY_PIN, HIGH);
+    bombaEncendida = false;
+    Serial.println("🔴 Bomba OFF (tiempo cumplido)");
+
+    int durationSecs = bombaDuracionMs / 1000;
+    if (durationSecs <= 0) durationSecs = 1;
+    enviarAutoWatering(durationSecs);
+  }
 }
 
 void enviarHumedad(float humedadPct) {
