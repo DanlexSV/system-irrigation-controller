@@ -25,6 +25,7 @@ float ultimoHumedadPct = -1.0;
 
 bool bombaEncendida            = false;
 unsigned long tiempoInicioRiego = 0;
+unsigned long bombaDuracionMs   = 0;
 
 
 bool   conectarWiFi();
