@@ -43,6 +43,7 @@ void   enviarAutoWatering(int durationSeconds);
 
 void setup() {
   Serial.begin(115200);
+  delay(1000);
   pinMode(SENSOR_PIN, INPUT);
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, HIGH);
